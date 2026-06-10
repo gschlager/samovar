@@ -145,9 +145,14 @@ module Samovar
 		def parse(input, parent = nil, default = nil)
 			values = (default || @defaults).dup
 			
+			# A predicate identifying registered flags, so a value flag does not consume a
+			# following flag as its value (e.g. `--config --verbose` leaves `config` unset
+			# rather than setting it to `--verbose`):
+			known = ->(token){@keyed.key?(token)}
+			
 			while option = @keyed[input.first]
 				# prefix = input.first
-				result = option.parse(input)
+				result = option.parse(input, known: known)
 				if result != nil
 					values[option.key] = result
 				end

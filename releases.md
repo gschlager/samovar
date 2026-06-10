@@ -2,10 +2,12 @@
 
 ## v2.4.1
 
+  - Fix flag value parsing: a flag that expects a value no longer consumes a following flag as its value (e.g. `--config --verbose` no longer treats `--verbose` as the value for `--config`). A flag given no value is left unset, so a required option correctly raises `Samovar::MissingValueError`.
+
 ## v2.4.0
 
   - Fix option parsing and validation: required options are now detected correctly and raise `Samovar::MissingValueError` when missing.
-  - Fix flag value parsing: flags that expect a value no longer consume a following flag as their value (e.g. `--config <path>` will not consume `--verbose`).
+  - Fix flag value parsing: a flag that expects a value but is given none at the end of the input no longer returns its own flag name as the value.
   - Usage improvements: required options are marked as `(required)` in usage output.
 
 ## v2.3.0
