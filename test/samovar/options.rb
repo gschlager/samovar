@@ -71,6 +71,12 @@ describe Samovar::Options do
 			end.to raise_exception(Samovar::MissingValueError)
 		end
 		
+		it "raises exception when a required option's value is another flag" do
+			expect do
+				command_class.parse(["--config", "--verbose"])
+			end.to raise_exception(Samovar::MissingValueError)
+		end
+		
 		it "succeeds when required option is provided" do
 			command = command_class.parse(["--config", "config.yml"])
 			
@@ -93,6 +99,30 @@ describe Samovar::Options do
 			expect(result).to be_nil
 			expect(output.string).to be(:include?, "config")
 			expect(output.string).to be(:include?, "required")
+		end
+	end
+	
+	with "value flag followed by another flag" do
+		let(:command_class) do
+			Class.new(Samovar::Command) do
+				options do
+					option "--config <path>", "The configuration file path."
+					option "--verbose", "Enable verbose output."
+				end
+			end
+		end
+		
+		it "does not consume a following flag as its value" do
+			command = command_class.parse(["--config", "--verbose"])
+			
+			expect(command.options[:config]).to be_nil
+			expect(command.options[:verbose]).to be == true
+		end
+		
+		it "keeps a value that looks like a negative number" do
+			command = command_class.parse(["--config", "-5"])
+			
+			expect(command.options[:config]).to be == "-5"
 		end
 	end
 	

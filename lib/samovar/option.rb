@@ -121,9 +121,10 @@ module Samovar
 		# @parameter input [Array(String)] The command-line arguments.
 		# @parameter parent [Command | Nil] The parent command (unused, kept for compatibility).
 		# @parameter default [Object | Nil] An override for the default value (unused, kept for compatibility).
+		# @parameter known [Proc | Nil] A predicate that returns true if a token is a registered flag, used to avoid consuming a following flag as a value.
 		# @returns [Object | Nil] The parsed value.
-		def parse(input, parent = nil, default = nil)
-			result = @flags.parse(input)
+		def parse(input, parent = nil, default = nil, known: nil)
+			result = @flags.parse(input, known: known)
 			
 			if result != nil
 				@value.nil? ? coerce(result) : @value

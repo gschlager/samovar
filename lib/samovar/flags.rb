@@ -55,10 +55,11 @@ module Samovar
 		# Parse a flag from the input.
 		# 
 		# @parameter input [Array(String)] The command-line arguments.
+		# @parameter known [Proc | Nil] A predicate that returns true if a token is a registered flag, used to avoid consuming a following flag as a value.
 		# @returns [Object | Nil] The parsed value, or nil if no match.
-		def parse(input)
+		def parse(input, known: nil)
 			@ordered.each do |flag|
-				result = flag.parse(input)
+				result = flag.parse(input, known: known)
 				if result != nil
 					return result
 				end
@@ -177,11 +178,20 @@ module Samovar
 		# Parse this flag from the input.
 		# 
 		# @parameter input [Array(String)] The command-line arguments.
+		# @parameter known [Proc | Nil] A predicate that returns true if a token is a registered flag. When the value position holds a registered flag, the value is treated as missing rather than consuming the flag.
 		# @returns [String | Symbol | Nil] The parsed value.
-		def parse(input)
+		def parse(input, known: nil)
 			if prefix?(input.first)
 				# Whether we are expecting to parse a value from input:
 				if @value
+					# If the next token is itself a registered flag, the value is missing:
+					# consume only this flag and leave the following flag to be parsed normally
+					# (e.g. `--config --verbose` must not treat `--verbose` as the value).
+					if known&.call(input[1])
+						input.shift
+						return nil
+					end
+					
 					# Get the actual value from input:
 					flag, value = input.shift(2)
 					return value
@@ -232,8 +242,9 @@ module Samovar
 		# Parse this flag from the input.
 		# 
 		# @parameter input [Array(String)] The command-line arguments.
+		# @parameter known [Proc | Nil] A predicate that returns true if a token is a registered flag (unused; accepted for a uniform flag interface).
 		# @returns [Boolean | Nil] True, false, or nil.
-		def parse(input)
+		def parse(input, known: nil)
 			if input.first == @prefix
 				input.shift
 				return true
