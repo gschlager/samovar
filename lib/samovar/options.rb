@@ -119,7 +119,7 @@ module Samovar
 		end
 		
 		# Add an option to this collection.
-		# 
+		#
 		# @parameter option [Option] The option to add.
 		def << option
 			@ordered << option
@@ -136,8 +136,16 @@ module Samovar
 			end
 		end
 		
+		# Look up the option that handles the given flag token.
+		#
+		# @parameter token [String] The flag token, e.g. `--verbose`.
+		# @returns [Option | Nil] The option that handles the given flag, if any.
+		def [] token
+			@keyed[token]
+		end
+		
 		# Parse options from the input.
-		# 
+		#
 		# @parameter input [Array(String)] The command-line arguments.
 		# @parameter parent [Command | Nil] The parent command.
 		# @parameter default [Hash | Nil] Default values to use.
@@ -145,24 +153,31 @@ module Samovar
 		def parse(input, parent = nil, default = nil)
 			values = (default || @defaults).dup
 			
-			while option = @keyed[input.first]
-				# prefix = input.first
+			while token = input.first
+				# A help request takes precedence over parsing options, even if `--help` is declared:
+				break if Help.token?(token, parent)
+				break unless option = @keyed[token]
+				
 				result = option.parse(input)
 				if result != nil
 					values[option.key] = result
 				end
 			end
 			
-			# Validate required options
-			@ordered.each do |option|
-				if option.required && !values.key?(option.key)
-					raise MissingValueError.new(parent, option.key)
+			# A help request takes precedence over validating required options:
+			unless Help.token?(input.first, parent)
+				@ordered.each do |option|
+					if option.required && !values.key?(option.key)
+						raise MissingValueError.new(parent, option.key)
+					end
 				end
 			end
 			
 			return values
-		end		# Generate a string representation for usage output.
-		# 
+		end
+		
+		# Generate a string representation for usage output.
+		#
 		# @returns [String] The usage string.
 		def to_s
 			@ordered.collect(&:to_s).join(" ")

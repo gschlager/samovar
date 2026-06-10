@@ -22,6 +22,13 @@ Please see the [project documentation](https://ioquatix.github.io/samovar/) for 
 
 Please see the [project releases](https://ioquatix.github.io/samovar/releases/index) for all releases.
 
+### v2.5.0
+
+  - `--help` is now a first-class request: when a help token is encountered during parsing, `Samovar::Help` is raised before any required-argument validation, and `Command.call` prints usage for the most specific command resolved so far (e.g. `command sub --help` prints the sub-command's usage). Commands no longer need to declare `--help` or check for it in `#call`.
+  - `--help` is always reserved, even if declared as an option. `-h` is only treated as a help request when it isn't claimed by another option (e.g. `-h/--hostname` keeps working).
+  - Help requests are not recognized after a `--` boundary: `command -- --help` passes `--help` through as data. Positional arguments (`Samovar::One`) no longer consume a literal `--`, which is reserved for `Samovar::Split`.
+  - Help output is printed to the command's output (defaults to `$stdout`), while errors continue to be printed to the error output (defaults to `$stderr`). When help is requested, `Command.call` returns the parsed command (truthy) instead of `nil`, so binaries can distinguish help (exit 0) from errors (exit 1).
+
 ### v2.4.1
 
 ### v2.4.0
@@ -77,16 +84,12 @@ Right now, options can take a single argument, e.g. `--count <int>`. Ideally, we
 Options can only be parsed at the place they are explicitly mentioned, e.g. a command with sub-commands won't parse an option added to the end of the command:
 
 ``` ruby
-command list --help
+command list --verbose
 ```
 
-One might reasonably expect this to parse but it isn't so easy to generalize this:
+One might reasonably expect this to parse but it isn't so easy to generalize this. Some effort is required to disambiguate this. Initially, it makes sense to keep things as simple as possible. But, it might make sense for some options to be declared in a global scope, which are extracted before parsing begins. I'm not sure if this is really a good idea. It might just be better to give good error output in this case (you specified an option but it was in the wrong place).
 
-``` ruby
-command list -- --help
-```
-
-In this case, do we show help? Some effort is required to disambiguate this. Initially, it makes sense to keep things as simple as possible. But, it might make sense for some options to be declared in a global scope, which are extracted before parsing begins. I'm not sure if this is really a good idea. It might just be better to give good error output in this case (you specified an option but it was in the wrong place).
+Note that `--help` specifically is now recognized as a first-class request and routed to the most specific resolved command, with `command list -- --help` passing `--help` through as data — but the general problem remains for other options.
 
 ### Shell Auto-completion
 
@@ -96,4 +99,4 @@ As a secondary to this, it would be nice if `Samovar::One` and `Samovar::Many` c
 
 ### Short/Long Help
 
-It might be interesting to explore whether it's possible to have `-h` and `--help` do different things. This could include command specific help output, more detailed help output (similar to a man page), and other useful help related tasks.
+`-h` and `--help` are now handled as first-class help requests, including command specific help output for sub-commands. It might be interesting to explore whether it's possible to have `-h` and `--help` do different things. This could include more detailed help output (similar to a man page), and other useful help related tasks.

@@ -48,12 +48,15 @@ module Samovar
 			end
 			
 			map(InvalidInputError) do |error|
-				# This is a little hack which avoids printing out "--help" if it was part of an incomplete parse. In the future I'd prefer if this was handled explicitly.
-				@terminal.puts("#{error.message} in:", style: :error) unless error.help?
+				@terminal.puts("#{error.message} in:", style: :error)
 			end
 			
 			map(MissingValueError) do |error|
 				@terminal.puts("#{error.message} in:", style: :error)
+			end
+			
+			map(Help) do |help|
+				# A help request is not an error, so usage is printed without any error message.
 			end
 			
 			map(Header) do |header, rows|

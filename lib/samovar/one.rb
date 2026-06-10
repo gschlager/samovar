@@ -71,13 +71,15 @@ module Samovar
 		end
 		
 		# Parse a single argument from the input.
-		# 
+		#
+		# A literal `--` is never consumed: it marks the boundary for {Split}.
+		#
 		# @parameter input [Array(String)] The command-line arguments.
 		# @parameter parent [Command | Nil] The parent command.
 		# @parameter default [Object | Nil] An override for the default value.
 		# @returns [String | Object | Nil] The parsed value, or the default if no match.
 		def parse(input, parent = nil, default = nil)
-			if input.first =~ @pattern
+			if input.first != "--" and input.first =~ @pattern
 				input.shift
 			elsif default ||= @default
 				return default

@@ -11,7 +11,7 @@ end
 
 class InnerB < InnerA
 	options do
-		option "--help", "Do you need it?"
+		option "--verbose", "Tell me everything."
 	end
 end
 
@@ -125,14 +125,21 @@ describe Samovar::Nested do
 	end
 	
 	it "can parse derived options" do
-		outer = Outer["inner-c", "--help"]
+		outer = Outer["inner-c", "--verbose"]
 		expect(outer.command).to be_a(InnerC)
-		expect(outer.command.options).to have_keys(help: be == true)
+		expect(outer.command.options).to have_keys(verbose: be == true)
 		expect(outer.command.parent).to be_equal(outer)
 	end
 	
-	# it "should parse help option at outer level" do
-	# 	outer = Outer['inner-a', '--help']
-	# 	expect(outer.options[:help]).to_be truthy
-	# end
+	it "should raise help for the nested command" do
+		expect do
+			Outer["inner-a", "--help"]
+		end.to raise_exception(Samovar::Help)
+	end
+	
+	it "should raise help for the outer command" do
+		expect do
+			Outer["--help"]
+		end.to raise_exception(Samovar::Help)
+	end
 end

@@ -21,14 +21,20 @@ module Samovar
 	# Commands are the main building blocks of Samovar applications. Each command is a class that can parse command-line arguments, options, and sub-commands.
 	class Command
 		# Parse and execute the command with the given input.
-		# 
+		#
 		# This is the high-level entry point for CLI applications. It handles errors gracefully by printing usage and returning nil.
-		# 
+		#
+		# If help is requested (e.g. `--help`), usage information for the most specific command resolved so far is printed to that command's output (defaults to `$stdout`) and the parsed command is returned without being executed. This allows a binary to distinguish help (truthy result) from errors (nil result), e.g. `exit(1) unless MyCommand.call`.
+		#
 		# @parameter input [Array(String)] The command-line arguments to parse.
 		# @parameter output [IO] The output stream for error messages.
-		# @returns [Object | Nil] The result of the command's call method, or nil if parsing/execution failed.
+		# @returns [Object | Command | Nil] The result of the command's call method, the parsed command if help was requested, or nil if parsing/execution failed.
 		def self.call(input = ARGV, output: $stderr)
 			self.parse(input).call
+		rescue Help => help
+			help.command.print_usage
+			
+			return help.command
 		rescue Error => error
 			error.command.print_usage(output: output) do |formatter|
 				formatter.map(error)
@@ -38,13 +44,14 @@ module Samovar
 		end
 		
 		# Parse the command-line input and create a command instance.
-		# 
+		#
 		# This is the low-level parsing primitive. It raises {Error} exceptions on parsing failures.
 		# For CLI applications, use {call} instead which handles errors gracefully.
-		# 
+		#
 		# @parameter input [Array(String)] The command-line arguments to parse.
 		# @returns [Command] The parsed command instance.
 		# @raises [Error] If parsing fails.
+		# @raises [Help] If help is requested, e.g. by `--help`.
 		def self.parse(input)
 			self.new(input)
 		end
@@ -147,13 +154,45 @@ module Samovar
 		end
 		
 		# Generate a command-line usage string.
-		# 
+		#
 		# @parameter name [String] The name of the command.
 		# @returns [String] The command-line usage string.
 		def self.command_line(name)
 			table = self.table.merged
 			
 			return "#{name} #{table.usage}"
+		end
+		
+		# Find the option that handles the given flag token, if any.
+		#
+		# @parameter token [String] The flag token, e.g. `-h`.
+		# @returns [Option | Nil] The option that claims the given flag.
+		def self.option_for(token)
+			self.table.merged.each do |row|
+				if row.is_a?(Options) and option = row[token]
+					return option
+				end
+			end
+			
+			return nil
+		end
+		
+		# Check if the given token is a help request for this command.
+		#
+		# `--help` is always reserved as a help request, even if an option declares it. `-h` is only treated as a help request if no option claims it for another purpose (e.g. `-h/--hostname`), or if it is claimed by the help option itself (e.g. `-h/--help`).
+		#
+		# @parameter token [String | Nil] The token to check.
+		# @returns [Boolean] True if the token requests help.
+		def self.help_token?(token)
+			case token
+			when "--help"
+				true
+			when "-h"
+				option = self.option_for(token)
+				option.nil? || option.key == :help
+			else
+				false
+			end
 		end
 		
 		# Initialize a new command instance.
@@ -207,15 +246,27 @@ module Samovar
 			self.dup.tap{|command| command.parse(input)}
 		end
 		
+		# Check if the given token is a help request for this command.
+		#
+		# @parameter token [String | Nil] The token to check.
+		# @returns [Boolean] True if the token requests help.
+		def help_token?(token)
+			self.class.help_token?(token)
+		end
+		
 		# Parse the command-line input.
-		# 
+		#
 		# @parameter input [Array(String)] The command-line arguments to parse.
 		# @returns [Command] The command instance.
+		# @raises [Help] If help is requested, e.g. by `--help`.
+		# @raises [InvalidInputError] If the input could not be completely parsed.
 		def parse(input)
 			self.class.table.merged.parse(input, self)
 			
 			if input.empty?
 				return self
+			elsif Help.token?(input.first, self)
+				raise Help.new(self)
 			else
 				raise InvalidInputError.new(self, input)
 			end

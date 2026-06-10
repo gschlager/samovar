@@ -42,25 +42,19 @@ class List < Samovar::Command
 end
 
 class Application < Samovar::Command
-	options do
-		option "--help", "Do you need help?"
-	end
-	
 	nested :command, {
 		"list" => List
 	}, default: "list"
 	
 	def call
-		if @options[:help]
-			self.print_usage
-		else
-			@command.call
-		end
+		@command.call
 	end
 end
 
 Application.call # Defaults to ARGV.
 ~~~
+
+Note that you don't need to declare or handle `--help` yourself — see [Help](#help) below.
 
 ### Basic Options
 
@@ -174,6 +168,30 @@ concurrent_application = application["--threads", 12]
 
 These forms can be useful when invoking one command from another, or in unit tests.
 
+## Help
+
+Samovar treats `--help` as a first-class request: commands don't need to declare it as an option or check for it in `call`. When a help token is encountered during parsing, {ruby Samovar::Help} is raised before any required arguments or options are validated, and {ruby Samovar::Command.call} handles it by printing usage information for the most specific command resolved so far:
+
+~~~ ruby
+Application.call(["--help"]) # Prints usage for Application.
+Application.call(["list", "--help"]) # Prints usage for the `list` sub-command.
+~~~
+
+The rules are:
+
+- `--help` is always reserved as a help request, even if a command declares it as an option.
+- `-h` is only treated as a help request if no option claims it — an option like `-h/--hostname` takes precedence, while `-h/--help` still works as expected.
+- Arguments after a `--` split are never treated as help requests, e.g. `application -- --help` passes `--help` through as data.
+- Help takes precedence over validation, so `application --help` prints usage even when required options or arguments are missing.
+
+Usage information is printed to the command's output (defaults to `$stdout`), while errors are printed to the error output (defaults to `$stderr`). When help is requested, {ruby Samovar::Command.call} returns the parsed command without executing it, so a typical binary can use the result to compute a successful exit status:
+
+~~~ ruby
+exit(1) unless Application.call
+~~~
+
+If you need custom behaviour, use {ruby Samovar::Command.parse} and rescue {ruby Samovar::Help} yourself.
+
 ## Error Handling
 
 Samovar provides two entry points with different error handling behaviors:
@@ -212,4 +230,5 @@ Samovar defines several error types:
 
 - {ruby Samovar::InvalidInputError}: Raised when unexpected command-line input is encountered
 - {ruby Samovar::MissingValueError}: Raised when required arguments or options are missing
+- {ruby Samovar::Help}: Raised when help is requested (e.g. `--help`) — not a failure, but a request to print usage
 
