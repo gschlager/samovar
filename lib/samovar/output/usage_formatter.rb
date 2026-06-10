@@ -47,28 +47,29 @@ module Samovar
 			end
 			
 			# Format and print the given object according to its type.
-			# 
+			#
 			# @parameter object [Object] The object to format (a {Rows}, {Row}, {Header}, or error).
 			# @parameter arguments [Array] Extra context passed through to nested rows (the containing {Rows}).
 			def map(object, *arguments)
 				case object
 				when InvalidInputError
-					# This is a little hack which avoids printing out "--help" if it was part of an incomplete parse. In the future I'd prefer if this was handled explicitly.
-					@terminal.puts("#{object.message} in:", style: :error) unless object.help?
+					@terminal.puts("#{object.message} in:", style: :error)
 				when MissingValueError
 					@terminal.puts("#{object.message} in:", style: :error)
+				when Help
+					# A help request is not an error, so usage is printed without any error message.
 				when Header
 					header, rows = object, arguments.first
-					
+
 					if @first
 						@first = false
 					else
 						@terminal.puts
 					end
-					
+
 					command_line = header.object.command_line(header.name)
 					@terminal.puts "#{rows.indentation}#{command_line}", style: :header
-					
+
 					if description = header.object.description
 						@terminal.puts "#{rows.indentation}\t#{description}", style: :description
 						@terminal.puts

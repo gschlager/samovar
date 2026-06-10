@@ -123,13 +123,39 @@ describe Samovar::Output::UsageFormatter do
 			expect(output.string).to be(:include?, "--unknown-flag")
 		end
 		
-		it "skips help flag errors" do
-			# The --help flag should not print an error message:
-			result = command_class.call(["--help"], output: output)
+		it "prints usage without an error message for help requests" do
+			help_output = StringIO.new
 			
-			expect(result).to be_nil
-			# Should not include error message for help:
-			expect(output.string).not.to be(:include?, "Could not parse")
+			begin
+				original_output = $stdout
+				$stdout = help_output
+				
+				# The --help flag prints usage to the command's output (defaults to $stdout) and returns the command:
+				result = command_class.call(["--help"], output: output)
+			ensure
+				$stdout = original_output
+			end
+			
+			expect(result).to be_a(command_class)
+			
+			# No error message is printed:
+			expect(output.string).to be == ""
+			
+			# Usage is printed without an error message:
+			expect(help_output.string).to be(:include?, "--flag")
+			expect(help_output.string).not.to be(:include?, "Could not parse")
+		end
+		
+		it "formats Help without an error message" do
+			command = command_class.new
+			help = Samovar::Help.new(command)
+			
+			command.print_usage(output: output) do |formatter|
+				formatter.map(help)
+			end
+			
+			expect(output.string).to be(:include?, "Command for testing errors")
+			expect(output.string).not.to be(:include?, "Help requested")
 		end
 	end
 	

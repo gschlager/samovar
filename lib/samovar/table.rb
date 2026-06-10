@@ -3,6 +3,8 @@
 # Released under the MIT License.
 # Copyright, 2016-2025, by Samuel Williams.
 
+require_relative "error"
+
 module Samovar
 	# Represents a table of parsing rows for a command.
 	# 
@@ -109,12 +111,18 @@ module Samovar
 		end
 		
 		# Parse the input according to the rows in this table.
-		# 
+		#
 		# @parameter input [Array(String)] The command-line arguments.
 		# @parameter parent [Command] The parent command to store results in.
+		# @raises [Help] If help is requested, e.g. by `--help`.
 		def parse(input, parent)
 			@rows.each do |key, row|
 				next unless row.respond_to?(:parse)
+				
+				# A help request takes precedence over consuming the input, including any further validation:
+				if Help.token?(input.first, parent)
+					raise Help.new(parent)
+				end
 				
 				current = parent.send(key)
 				

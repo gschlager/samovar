@@ -1,5 +1,13 @@
 # Releases
 
+## v2.5.0
+
+  - `--help` is now a first-class request: when a help token is encountered during parsing, `Samovar::Help` is raised before any required-argument validation, and `Command.call` prints usage for the most specific command resolved so far (e.g. `command sub --help` prints the sub-command's usage). Commands no longer need to declare `--help` or check for it in `#call`.
+  - `--help` is always reserved, even if declared as an option. `-h` is only treated as a help request when it isn't claimed by another option (e.g. `-h/--hostname` keeps working).
+  - Help requests are not recognized after a `--` boundary: `command -- --help` passes `--help` through as data. Positional arguments (`Samovar::One`) no longer consume a literal `--`, which is reserved for `Samovar::Split`.
+  - Help output is printed to the command's output (defaults to `$stdout`), while errors continue to be printed to the error output (defaults to `$stderr`). When help is requested, `Command.call` returns the parsed command (truthy) instead of `nil`, so binaries can distinguish help (exit 0) from errors (exit 1).
+  - Usage formatting no longer suppresses `--help` tokens in `InvalidInputError` messages — help is now handled explicitly.
+
 ## v2.4.1
 
   - Add support for options provided with an equals sign, e.g. `--config=path`. Both `--config path` and `--config=path` are accepted, and the token is split on the first `=` only, so the value may itself contain `=`.
