@@ -145,9 +145,16 @@ module Samovar
 		def parse(input, parent = nil, default = nil)
 			values = (default || @defaults).dup
 			
-			while option = @keyed[input.first]
-				# prefix = input.first
+			# Match an option by its exact token (`--flag`), or by the part before
+			# the first `=` to support the `--flag=value` form:
+			while option = @keyed[input.first] || @keyed[input.first.to_s.split("=", 2).first]
+				before = input.size
 				result = option.parse(input)
+				
+				# A flag that takes no value will not consume an `--flag=value` token;
+				# stop so it surfaces as invalid input instead of looping forever:
+				break if input.size == before
+				
 				if result != nil
 					values[option.key] = result
 				end

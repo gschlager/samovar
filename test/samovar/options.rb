@@ -160,5 +160,43 @@ describe Samovar::Options do
 			expect(values[:thing].value).to be == "test"
 		end
 	end
+	
+	with "equals sign syntax" do
+		let(:options) do
+			subject.parse do
+				option "-c/--config <path>", "The configuration file path."
+				option "--verbose", "Enable verbose output."
+			end
+		end
+		
+		it "parses a value given with an equals sign" do
+			values = options.parse(["--config=app.yml"], {})
+			expect(values[:config]).to be == "app.yml"
+		end
+		
+		it "is equivalent to the space-separated form" do
+			expect(options.parse(["--config=app.yml"], {})).to be == options.parse(["--config", "app.yml"], {})
+		end
+		
+		it "splits on the first equals sign only" do
+			values = options.parse(["--config=a=b=c"], {})
+			expect(values[:config]).to be == "a=b=c"
+		end
+		
+		it "accepts an empty value after the equals sign" do
+			values = options.parse(["--config="], {})
+			expect(values[:config]).to be == ""
+		end
+		
+		it "parses an alternative prefix with an equals sign" do
+			values = options.parse(["-c=app.yml"], {})
+			expect(values[:config]).to be == "app.yml"
+		end
+		
+		it "does not set a flag that takes no value when given an equals sign" do
+			values = options.parse(["--verbose=x"], {})
+			expect(values.key?(:verbose)).to be == false
+		end
+	end
 end
 

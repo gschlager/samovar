@@ -194,5 +194,40 @@ describe Samovar::Command do
 			expect(usage).to be(:start_with?, "mycommand")
 		end
 	end
+	
+	with "equals sign option syntax" do
+		let(:command_class) do
+			Class.new(Samovar::Command) do
+				self.description = "A command that accepts a configuration file."
+				
+				options do
+					option "--config <path>", "The configuration file path."
+					option "--verbose", "Enable verbose output."
+				end
+			end
+		end
+		
+		it "parses the --option=value form" do
+			command = command_class.parse(["--config=config.yml"])
+			expect(command.options[:config]).to be == "config.yml"
+		end
+		
+		it "matches the --option value form" do
+			command = command_class.parse(["--config", "config.yml"])
+			expect(command.options[:config]).to be == "config.yml"
+		end
+		
+		it "rejects the equals sign form for a flag that takes no value" do
+			expect do
+				command_class.parse(["--verbose=x"])
+			end.to raise_exception(Samovar::InvalidInputError)
+		end
+		
+		it "raises for an unknown option in the equals sign form" do
+			expect do
+				command_class.parse(["--unknown=value"])
+			end.to raise_exception(Samovar::InvalidInputError)
+		end
+	end
 end
 

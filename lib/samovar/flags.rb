@@ -190,6 +190,14 @@ module Samovar
 					input.shift
 					return key
 				end
+			elsif @value && input.first&.include?("=")
+				# The `--flag=value` form, only for flags that take a value. Split on
+				# the first `=` only, so the value may itself contain `=`:
+				flag, value = input.first.split("=", 2)
+				if prefix?(flag)
+					input.shift
+					return value
+				end
 			end
 		end
 	end
